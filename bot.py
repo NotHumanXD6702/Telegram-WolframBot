@@ -37,8 +37,10 @@ if __name__ == "__main__":
             loop.create_task(main())
         else:
             loop.run_until_complete(main())
-    except RuntimeError:
+    except RuntimeError as e:
         # Create a new event loop if none exists
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
