@@ -31,16 +31,19 @@ async def main():
 # Properly handle the event loop for Railway deployment
 if __name__ == "__main__":
     try:
+        # Check if an event loop is already running
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            # If an event loop is already running, use `create_task`
+            # If an event loop is already running, schedule the main() coroutine
             loop.create_task(main())
         else:
+            # If no event loop is running, create a new one and run main()
             loop.run_until_complete(main())
     except RuntimeError as e:
-        # Create a new event loop if none exists
+        # Handle cases where the event loop is closed or unavailable
+        logger.error(f"RuntimeError: {e}")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
