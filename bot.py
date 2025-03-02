@@ -1,43 +1,47 @@
 import os
-import wolframalpha
-from telegram import Update, InlineQueryResultArticle, InputTextMessageContent
-from telegram.ext import Application, InlineQueryHandler
-import hashlib
+import requests
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
 
-# Get environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WOLFRAM_APP_ID = os.getenv("WOLFRAM_APP_ID")
+# Load bot token and Wolfram API key from environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Your Telegram bot token
+WOLFRAM_APP_ID = os.getenv("WOLFRAM_APP_ID")  # Your Wolfram Alpha API key
 
-# Initialize Wolfram Alpha Client
-wa_client = wolframalpha.Client(WOLFRAM_APP_ID)
+# Function to get answer from Wolfram Alpha
+def get_wolfram_answer(query):
+    url = f"https://api.wolframalpha.com/v2/query?input={query}&format=plaintext&output=JSON&appid={WOLFRAM_APP_ID}"
+    response = requests.get(url).json()
 
-# Function to handle inline queries
-async def inline_query(update: Update, context) -> None:
-    query = update.inline_query.query
-    if not query:
-        return
-    
     try:
-        res = wa_client.query(query)
-        answer = next(res.results).text
-    except:
-        answer = "Couldn't solve it."
+        for pod in response["queryresult"]["pods"]:
+            if "primary" in pod and pod["primary"]:  # Get the main answer
+                return pod["subpods"][0]["plaintext"]
+        return "Couldn't find a proper answer."
+    except Exception as e:
+        return f"Error: {str(e)}"
 
-    result_id = hashlib.md5(query.encode()).hexdigest()
-    results = [
-        InlineQueryResultArticle(
-            id=result_id,
-            title="Wolfram Alpha Result",
-            input_message_content=InputTextMessageContent(answer),
-        )
-    ]
-    await update.inline_query.answer(results)
+# Command function to handle /math or /calc
+def solve(update: Update, context: CallbackContext) -> None:
+    if not context.args:
+        update.message.reply_text("Please provide a math expression. Example: /math 2+2")
+        return
+
+    query = " ".join(context.args)
+    answer = get_wolfram_answer(query)
+    
+    update.message.reply_text(f"🧮 *Question:* `{query}`\n✅ *Answer:* `{answer}`", parse_mode="Markdown")
 
 # Start the bot
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(InlineQueryHandler(inline_query))
-    app.run_polling()
+    updater = Updater(token=BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    # Command handlers
+    dp.add_handler(CommandHandler("math", solve))  # Use /math 2+2
+
+    # Start polling
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
