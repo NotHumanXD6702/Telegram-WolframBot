@@ -10,14 +10,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Telegram Bot Token from Railway environment variables
+# Get the bot token from the environment variable
 TOKEN = os.getenv("BOT_TOKEN")
 
 # Function to handle /start command
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Hello! I am your bot. How can I help you?")
 
-# Main function
+# Main function to set up the bot
 async def main():
     # Initialize the bot application
     app = Application.builder().token(TOKEN).build()
@@ -28,10 +28,17 @@ async def main():
     # Start polling
     await app.run_polling()
 
-# Proper handling of asyncio event loop
+# Properly handle the event loop for Railway deployment
 if __name__ == "__main__":
     try:
-        asyncio.run(main())  # ✅ Works fine when running normally
-    except RuntimeError:
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())  # ✅ Fixes issue when inside an existing loop
+        if loop.is_running():
+            # If an event loop is already running, use `create_task`
+            loop.create_task(main())
+        else:
+            loop.run_until_complete(main())
+    except RuntimeError:
+        # Create a new event loop if none exists
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
