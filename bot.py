@@ -1,9 +1,9 @@
 import os
 import requests
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 
-# Load bot token and Wolfram API key from environment variables
+# Get API keys from Railway environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # Your Telegram bot token
 WOLFRAM_APP_ID = os.getenv("WOLFRAM_APP_ID")  # Your Wolfram Alpha API key
 
@@ -20,28 +20,28 @@ def get_wolfram_answer(query):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# Command function to handle /math or /calc
-def solve(update: Update, context: CallbackContext) -> None:
+# Command function to handle /math
+async def solve(update: Update, context: CallbackContext) -> None:
     if not context.args:
-        update.message.reply_text("Please provide a math expression. Example: /math 2+2")
+        await update.message.reply_text("Please provide a math expression. Example: /math 2+2")
         return
 
     query = " ".join(context.args)
     answer = get_wolfram_answer(query)
-    
-    update.message.reply_text(f"🧮 *Question:* `{query}`\n✅ *Answer:* `{answer}`", parse_mode="Markdown")
+
+    await update.message.reply_text(f"🧮 *Question:* `{query}`\n✅ *Answer:* `{answer}`", parse_mode="Markdown")
 
 # Start the bot
-def main():
-    updater = Updater(token=BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
+async def main():
+    app = Application.builder().token(BOT_TOKEN).build()
 
     # Command handlers
-    dp.add_handler(CommandHandler("math", solve))  # Use /math 2+2
+    app.add_handler(CommandHandler("math", solve))
 
     # Start polling
-    updater.start_polling()
-    updater.idle()
+    print("Bot is running...")
+    await app.run_polling()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
