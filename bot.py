@@ -1,10 +1,10 @@
-from telegram import InlineQueryResultArticle, InputTextMessageContent, Update
-from telegram.ext import Updater, InlineQueryHandler, CallbackContext
-import wolframalpha
-import hashlib
 import os
+import wolframalpha
+from telegram import Update, InlineQueryResultArticle, InputTextMessageContent
+from telegram.ext import Application, InlineQueryHandler
+import hashlib
 
-# Get credentials from environment variables
+# Get environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WOLFRAM_APP_ID = os.getenv("WOLFRAM_APP_ID")
 
@@ -12,7 +12,7 @@ WOLFRAM_APP_ID = os.getenv("WOLFRAM_APP_ID")
 wa_client = wolframalpha.Client(WOLFRAM_APP_ID)
 
 # Function to handle inline queries
-def inline_query(update: Update, context: CallbackContext) -> None:
+async def inline_query(update: Update, context) -> None:
     query = update.inline_query.query
     if not query:
         return
@@ -23,7 +23,7 @@ def inline_query(update: Update, context: CallbackContext) -> None:
     except:
         answer = "Couldn't solve it."
 
-    result_id = hashlib.md5(query.encode()).hexdigest()  # Unique ID for caching
+    result_id = hashlib.md5(query.encode()).hexdigest()
     results = [
         InlineQueryResultArticle(
             id=result_id,
@@ -31,15 +31,13 @@ def inline_query(update: Update, context: CallbackContext) -> None:
             input_message_content=InputTextMessageContent(answer),
         )
     ]
-    update.inline_query.answer(results)
+    await update.inline_query.answer(results)
 
 # Start the bot
 def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(InlineQueryHandler(inline_query))
-    updater.start_polling()
-    updater.idle()
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(InlineQueryHandler(inline_query))
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
