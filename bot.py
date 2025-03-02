@@ -1,47 +1,37 @@
-import os
-import requests
+import asyncio
+import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
+import os
 
-# Get API keys from Railway environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Your Telegram bot token
-WOLFRAM_APP_ID = os.getenv("WOLFRAM_APP_ID")  # Your Wolfram Alpha API key
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
-# Function to get answer from Wolfram Alpha
-def get_wolfram_answer(query):
-    url = f"https://api.wolframalpha.com/v2/query?input={query}&format=plaintext&output=JSON&appid={WOLFRAM_APP_ID}"
-    response = requests.get(url).json()
+# Telegram Bot Token from Railway environment variables
+TOKEN = os.getenv("BOT_TOKEN")
 
-    try:
-        for pod in response["queryresult"]["pods"]:
-            if "primary" in pod and pod["primary"]:  # Get the main answer
-                return pod["subpods"][0]["plaintext"]
-        return "Couldn't find a proper answer."
-    except Exception as e:
-        return f"Error: {str(e)}"
+# Function to handle /start command
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Hello! I am your bot. How can I help you?")
 
-# Command function to handle /math
-async def solve(update: Update, context: CallbackContext) -> None:
-    if not context.args:
-        await update.message.reply_text("Please provide a math expression. Example: /math 2+2")
-        return
-
-    query = " ".join(context.args)
-    answer = get_wolfram_answer(query)
-
-    await update.message.reply_text(f"🧮 *Question:* `{query}`\n✅ *Answer:* `{answer}`", parse_mode="Markdown")
-
-# Start the bot
+# Main function
 async def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+    # Initialize the bot application
+    app = Application.builder().token(TOKEN).build()
 
-    # Command handlers
-    app.add_handler(CommandHandler("math", solve))
+    # Add command handlers
+    app.add_handler(CommandHandler("start", start))
 
     # Start polling
-    print("Bot is running...")
     await app.run_polling()
 
+# Proper handling of asyncio event loop
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    try:
+        asyncio.run(main())  # ✅ Works fine when running normally
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())  # ✅ Fixes issue when inside an existing loop
